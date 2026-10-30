@@ -1,0 +1,8 @@
+.env
+.env.*
+.git
+.venv
+venv
+__pycache__
+*.pyc
+class_dataset.csv
