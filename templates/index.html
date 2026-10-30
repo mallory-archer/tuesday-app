@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Class</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem auto;
+      max-width: 40rem;
+      line-height: 1.4;
+    }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; }
+    ul { padding-left: 1.2rem; }
+    #error { color: #9b1c1c; }
+  </style>
+</head>
+<body>
+  <h1>Class</h1>
+  <p id="error" hidden></p>
+
+  <h2>Names</h2>
+  <ul id="names"></ul>
+
+  <h2>Skill averages</h2>
+  <ul id="averages"></ul>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
