@@ -17,12 +17,12 @@ ENV_PATH = ROOT / ".env"
 SCHEMA_PATH = ROOT / "schema.sql"
 CSV_PATH = ROOT / "class_dataset.csv"
 
-SKILL_COLUMNS = {
-    "skill_programming": "programming",
-    "skill_data_stats": "data_stats",
-    "skill_frontend_design": "frontend_design",
-    "skill_business_pitch": "business_pitch",
-}
+SKILL_COLUMNS = (
+    "skill_programming",
+    "skill_data_stats",
+    "skill_frontend_design",
+    "skill_business_pitch",
+)
 
 
 def load_env(path: Path) -> None:
@@ -56,7 +56,7 @@ def sql_statements(sql: str) -> list[str]:
     return statements
 
 
-def load_csv(cur, skill_ids, tool_ids, slot_ids) -> tuple[int, int, int]:
+def load_csv(cur, tool_ids, slot_ids) -> tuple[int, int, int]:
     students = 0
     tool_links = 0
     slot_links = 0
@@ -67,8 +67,10 @@ def load_csv(cur, skill_ids, tool_ids, slot_ids) -> tuple[int, int, int]:
                 """
                 INSERT INTO students (
                     netid, name, school_year, intro_programming,
+                    skill_programming, skill_data_stats,
+                    skill_frontend_design, skill_business_pitch,
                     working_style, interests, semester_goal, submitted_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING student_id
                 """,
                 (
@@ -76,6 +78,7 @@ def load_csv(cur, skill_ids, tool_ids, slot_ids) -> tuple[int, int, int]:
                     row["name"].strip(),
                     row["school_year"].strip(),
                     row["intro_programming"].strip(),
+                    *(int(row[column]) for column in SKILL_COLUMNS),
                     (row["working_style"] or "").strip() or None,
                     (row["interests"] or "").strip() or None,
                     (row["semester_goal"] or "").strip() or None,
@@ -84,15 +87,6 @@ def load_csv(cur, skill_ids, tool_ids, slot_ids) -> tuple[int, int, int]:
             )
             student_id = cur.fetchone()[0]
             students += 1
-
-            for column, code in SKILL_COLUMNS.items():
-                cur.execute(
-                    """
-                    INSERT INTO student_skills (student_id, skill_id, rating)
-                    VALUES (%s, %s, %s)
-                    """,
-                    (student_id, skill_ids[code], int(row[column])),
-                )
 
             seen_tools = set()
             for raw in row["tools"].split(";"):
@@ -159,25 +153,17 @@ def main() -> None:
                 for statement in sql_statements(SCHEMA_PATH.read_text()):
                     cur.execute(statement)
 
-                cur.execute("SELECT skill_code, skill_id FROM skills")
-                skill_ids = dict(cur.fetchall())
                 cur.execute("SELECT lower(tool_name), tool_id FROM tools")
                 tool_ids = dict(cur.fetchall())
                 cur.execute("SELECT slot_name, availability_id FROM availability")
                 slot_ids = dict(cur.fetchall())
 
-                missing = [code for code in SKILL_COLUMNS.values() if code not in skill_ids]
-                if missing:
-                    raise SystemExit(f"schema is missing skills: {', '.join(missing)}")
-
-                students, tool_links, slot_links = load_csv(cur, skill_ids, tool_ids, slot_ids)
+                students, tool_links, slot_links = load_csv(cur, tool_ids, slot_ids)
 
                 cur.execute(
                     """
                     SELECT
                       (SELECT COUNT(*) FROM students),
-                      (SELECT COUNT(*) FROM skills),
-                      (SELECT COUNT(*) FROM student_skills),
                       (SELECT COUNT(*) FROM tools),
                       (SELECT COUNT(*) FROM student_tools),
                       (SELECT COUNT(*) FROM availability),
@@ -190,12 +176,10 @@ def main() -> None:
 
     print(
         "students", counts[0],
-        "skills", counts[1],
-        "student_skills", counts[2],
-        "tools", counts[3],
-        "student_tools", counts[4],
-        "availability", counts[5],
-        "student_availability", counts[6],
+        "tools", counts[1],
+        "student_tools", counts[2],
+        "availability", counts[3],
+        "student_availability", counts[4],
     )
     print("loaded_students", students, "tool_links", tool_links, "slot_links", slot_links)
 
